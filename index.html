@@ -1,0 +1,1721 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Carrier Match Bot</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#171b22; --panel-2:#1d222b; --line:#262c37;
+    --text:#e8ecf2; --muted:#9aa3b2; --accent:#7cc3ff; --accent-2:#9bf6c1;
+    --warn:#ffd166; --bad:#ff7a7a; --good:#7be495;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 80px}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:13px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:720px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .card h2{font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  input[type=number], select, input[type=text]{
+    width:100%;background:var(--panel-2);color:var(--text);border:1px solid var(--line);
+    border-radius:9px;padding:10px 11px;font:inherit;outline:none
+  }
+  input:focus, select:focus{border-color:var(--accent)}
+  .row{display:flex;gap:10px}
+  .row > *{flex:1}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .chip{
+    background:var(--panel-2);border:1px solid var(--line);border-radius:999px;
+    padding:6px 10px;font-size:12px;color:var(--text);cursor:pointer;user-select:none
+  }
+  .chip.on{background:#1e3a5f;border-color:var(--accent);color:#cfe8ff}
+  .clarify-wrap{margin-top:18px;background:#1a2230;border:1px solid #2a3950;border-radius:10px;padding:14px}
+  .clarify-wrap h3{margin:0 0 10px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#9bf6c1}
+  .clarify-card{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+  .clarify-card .q{font-size:13px;color:var(--text);margin-bottom:8px}
+  .clarify-card .opts{display:flex;flex-wrap:wrap;gap:6px}
+  .clarify-opt{font-size:12px;padding:5px 10px;border-radius:6px;background:var(--panel);border:1px solid var(--line);color:var(--muted);cursor:pointer}
+  .clarify-opt:hover{color:var(--text);border-color:var(--accent)}
+  .clarify-opt.on{background:#1e3a5f;border-color:var(--accent);color:#cfe8ff}
+  .clarify-card.answered{opacity:.85}
+  .clarify-card .answer{font-size:11px;color:var(--accent);margin-left:8px}
+  .actions{display:flex;gap:10px;margin-top:18px}
+  button{
+    background:var(--accent);color:#06212f;border:0;border-radius:10px;padding:11px 16px;
+    font:600 14px/1 inherit;cursor:pointer
+  }
+  button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .result{margin-top:22px}
+  .pick{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+  .pick .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .pick .name{font-weight:700;font-size:16px;display:flex;align-items:center;gap:10px}
+  .rank{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 8px;border-radius:8px;background:#1d222b;border:1px solid var(--line);color:var(--muted);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+  .rank.r1{background:#11321f;color:#9bf6c1;border-color:#1e5a37}
+  .rank.r2{background:#1a2a3f;color:#cfe8ff;border-color:#2a4467}
+  .rank.r3{background:#2a2412;color:#ffd166;border-color:#5a4720}
+  .badge{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .badge.best{background:#11321f;color:#9bf6c1;border-color:#1e5a37}
+  .badge.good{background:#1a2a3f;color:#cfe8ff;border-color:#2a4467}
+  .badge.maybe{background:#3a2f15;color:#ffd166;border-color:#5a4720}
+  .why{margin-top:8px;color:var(--muted);font-size:13px}
+  .flags{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+  .flag{font-size:11px;padding:3px 8px;border-radius:6px;background:#1d222b;border:1px solid var(--line);color:#cfd6e2}
+  .flag.warn{color:var(--warn);border-color:#5a4720;background:#2a2412}
+  .flag.bad{color:var(--bad);border-color:#5a2020;background:#2a1212}
+  .bmi{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;margin-top:4px}
+  .disc{margin-top:18px;color:var(--muted);font-size:12px;line-height:1.5}
+  .empty{color:var(--muted);text-align:center;padding:28px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Carrier Match Bot</h1>
+  <p class="sub">Filtered to your appointed carriers: Mutual of Omaha, American Amicable, Transamerica, American National, Aflac, Combined (pending). Enter the client's profile and the bot ranks from best fit to last resort.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Demographics</h2>
+      <div class="row">
+        <div>
+          <label>Date of birth</label>
+          <input id="dob" type="date" />
+          <div class="bmi" id="ageOut">Age: —</div>
+        </div>
+        <div>
+          <label>Gender</label>
+          <select id="gender">
+            <option value="">—</option>
+            <option value="F">Female</option>
+            <option value="M">Male</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Height</label>
+          <div class="row">
+            <input id="ft" type="number" min="3" max="8" placeholder="ft" />
+            <input id="in" type="number" min="0" max="11" placeholder="in" />
+          </div>
+        </div>
+        <div>
+          <label>Weight (lb)</label>
+          <input id="wt" type="number" min="60" max="500" placeholder="e.g. 180" />
+        </div>
+      </div>
+      <div class="bmi" id="bmiOut">BMI: —</div>
+
+      <label>Tobacco / nicotine use</label>
+      <select id="tobacco">
+        <option value="none">None (5+ yrs clean)</option>
+        <option value="quit-recent">Quit within 1–5 yrs</option>
+        <option value="cigar">Cigar only (occasional)</option>
+        <option value="vape">Vape / e-cig</option>
+        <option value="chew">Chew / smokeless</option>
+        <option value="marijuana">Marijuana only</option>
+        <option value="smoker">Cigarette smoker</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <h2>Coverage Needed</h2>
+      <label>Product type</label>
+      <select id="product">
+        <option value="term">Term life</option>
+        <option value="iul">IUL / Permanent</option>
+        <option value="wl">Whole life</option>
+        <option value="fe">Final expense</option>
+        <option value="gi">Guaranteed issue</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>Face amount ($)</label>
+          <input id="face" type="number" min="5000" step="1000" placeholder="e.g. 250000" />
+        </div>
+        <div>
+          <label>Term length (yrs)</label>
+          <input id="term" type="number" min="5" max="40" step="5" placeholder="e.g. 20" />
+        </div>
+      </div>
+
+      <label>Health exam preference</label>
+      <select id="exam">
+        <option value="any">Any</option>
+        <option value="noexam">No exam preferred</option>
+        <option value="exam">OK with paramed exam</option>
+      </select>
+
+      <label>Budget priority</label>
+      <select id="budget">
+        <option value="best">Best price</option>
+        <option value="speed">Fastest issue</option>
+        <option value="lenient">Most lenient underwriting</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Describe the client's health</h2>
+    <label>Type it out in plain English — I'll figure out the conditions</label>
+    <textarea id="healthText" rows="4" placeholder="e.g. 62 yr old with type 2 diabetes, toe amputation, high blood pressure, smokes a pack a day, BMI around 34, takes Lexapro for anxiety"
+      style="width:100%;background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px 11px;font:inherit;outline:none;resize:vertical"></textarea>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button id="parseBtn" class="ghost" style="background:#1e3a5f;color:#cfe8ff;border-color:#2a4467">Detect conditions</button>
+      <div id="parseStatus" style="align-self:center;color:var(--muted);font-size:12px"></div>
+    </div>
+
+    <h2 style="margin-top:18px">Conditions detected (tap to add/remove)</h2>
+    <div class="chips" id="chips"></div>
+
+    <div id="clarifications"></div>
+
+    <label style="margin-top:14px">Other notes (A1C value, DUI date, meds, etc.)</label>
+    <input id="notes" type="text" placeholder="e.g. A1C 7.2, DUI 2021" />
+  </div>
+
+  <div class="actions">
+    <button id="go">Find best carriers</button>
+    <button id="reset" class="ghost">Reset</button>
+  </div>
+
+  <div id="result" class="result"></div>
+
+  <p class="disc">For agent use only. Not a replacement for a carrier quote engine or underwriter call. Rule logic is editable — tell Claude what to change and it'll update the bot.</p>
+</div>
+
+<script>
+// ----------------------------- Conditions list --------------------------------
+const CONDITIONS = [
+  {id:"diabetes-t2", label:"Type 2 diabetes (controlled)"},
+  {id:"diabetes-t1", label:"Type 1 diabetes"},
+  {id:"diabetes-insulin", label:"Insulin-dependent diabetes"},
+  {id:"diabetes-uncontrolled", label:"Uncontrolled diabetes (A1C > 9)"},
+  {id:"diabetes-amputation", label:"Diabetes w/ amputation"},
+  {id:"diabetes-neuropathy", label:"Diabetes w/ neuropathy"},
+  {id:"diabetes-retinopathy", label:"Diabetes w/ retinopathy"},
+  {id:"diabetes-circulation", label:"Diabetes w/ circulation/vascular issues"},
+  {id:"hbp", label:"High blood pressure (controlled)"},
+  {id:"chol", label:"High cholesterol"},
+  {id:"heart-attack", label:"Heart attack / stent"},
+  {id:"chf", label:"Congestive heart failure (CHF)"},
+  {id:"pacemaker", label:"Pacemaker / defibrillator"},
+  {id:"afib", label:"AFib / arrhythmia"},
+  {id:"aneurysm", label:"Aneurysm (incl. AAA)"},
+  {id:"stroke-tia", label:"Stroke / TIA"},
+  {id:"copd", label:"COPD / emphysema"},
+  {id:"oxygen", label:"On supplemental oxygen"},
+  {id:"asthma", label:"Asthma"},
+  {id:"sleep-apnea", label:"Sleep apnea (CPAP)"},
+  {id:"cancer-remission", label:"Cancer (in remission 2+ yrs)"},
+  {id:"cancer-recent", label:"Cancer (active or <2 yrs)"},
+  {id:"depression", label:"Depression / anxiety"},
+  {id:"bipolar", label:"Bipolar / schizophrenia"},
+  {id:"dui", label:"DUI / DWI history"},
+  {id:"felony", label:"Felony / probation"},
+  {id:"kidney", label:"Kidney disease / dialysis"},
+  {id:"liver", label:"Hepatitis / liver disease"},
+  {id:"hiv", label:"HIV positive (treated)"},
+  {id:"rx-opioid", label:"Opioid Rx / pain mgmt"},
+  {id:"alcohol-rehab", label:"Alcohol rehab history"},
+  {id:"mj-rec", label:"Marijuana — recreational"},
+  {id:"mj-med", label:"Marijuana — medical"},
+  {id:"crohn", label:"Crohn's / Ulcerative colitis"},
+  {id:"ms", label:"MS / Parkinson's"},
+  {id:"als", label:"ALS"},
+  {id:"alzheimers", label:"Alzheimer's / Dementia"},
+  {id:"paralysis", label:"Paralysis"},
+  {id:"transplant", label:"Organ transplant"},
+  {id:"lupus", label:"Lupus / SLE"},
+  {id:"sickle-cell", label:"Sickle cell anemia"},
+  {id:"brain-tumor", label:"Brain tumor"},
+  {id:"wheelchair", label:"Wheelchair / scooter (chronic)"},
+  {id:"hospice", label:"Hospice / nursing home / bed-bound"},
+  {id:"adl", label:"Needs ADL assistance"},
+  {id:"epilepsy", label:"Epilepsy / seizures"},
+  {id:"obesity", label:"High BMI / build issue"},
+  {id:"healthy", label:"No conditions — preferred risk"}
+];
+
+// ----------------------------- Carrier database -------------------------------
+// Each carrier has product types it writes, plus a scoring function returning
+// { score, badge, why, flags }.  Score 0 = exclude.  Higher = better fit.
+const CARRIERS = [
+  // ============================================================================
+  // ONLY THE CARRIERS AMBER IS APPOINTED WITH
+  // Each carrier has a knockouts() check — if it returns a reason string,
+  // the carrier is excluded (decline) and never shown.
+  // ============================================================================
+  {
+    // SOURCES (all verified from carrier-published documents):
+    // - Mutual of Omaha Simplified Issue Life Insurance Underwriting Guide, April 2026
+    //   (form #618352_0426, uploaded by user) — Multiple Impairments declines,
+    //   build chart, prescription drug exclusions, tobacco/marijuana rules.
+    // - Mutual of Omaha Brokerage Life Insurance Product Portfolio, April 2026
+    //   (form #388793_0426, uploaded by user) — product specs, issue ages, face caps.
+    // - Mutual of Omaha Final Expense Health Question Guide (ociservices.com, 2024)
+    //   — Living Promise Part 1 (Q1-Q5) = DECLINE. Part 2 (Q6-Q11) = GRADED.
+    // ALL MoO products use Age Last Birthday.
+    // NOTE: Marijuana use IS allowable for non-tobacco rates per the April 2026 UW Guide.
+    name:"Mutual of Omaha (Living Promise + Term Life Express)",
+    products:["term","fe","wl"],
+    knockouts(p){
+      // === Living Promise health knockouts (from Health Question Guide) ===
+      // Q1: HIV/AIDS
+      if(p.has("hiv")) return "HIV/AIDS — Living Promise Q1 decline";
+      // Q2: bedridden, nursing home, hospice, ADL assistance, wheelchair, oxygen, defibrillator
+      if(p.has("hospice")) return "Bedridden/hospice/nursing home — Living Promise Q2a decline";
+      if(p.has("adl")) return "Needs ADL assistance — Living Promise Q2b decline";
+      if(p.has("wheelchair")) return "Wheelchair/scooter for chronic illness — Living Promise Q2c decline";
+      if(p.has("oxygen")) return "Oxygen equipment use — Living Promise Q2c decline";
+      if(p.has("pacemaker")) return "Defibrillator — Living Promise Q2c decline (note: pacemaker alone may go to graded)";
+      // Q3a: ALS, Alzheimer's, Down, MD, quadri/paraplegia, CHF, cirrhosis, metastatic-recurrent cancer
+      if(p.has("als")) return "ALS — Living Promise Q3a decline";
+      if(p.has("alzheimers")) return "Alzheimer's/Dementia — Living Promise Q3a decline";
+      if(p.has("paralysis")) return "Paralysis (paraplegia/quadriplegia) — Living Promise Q3a decline";
+      if(p.has("transplant")) return "Organ/bone marrow transplant — Living Promise Q3a decline";
+      if(p.has("chf")) return "CHF — Living Promise Q3a decline";
+      if(p.has("sickle-cell")) return "Sickle cell anemia — Living Promise Q3a decline";
+      if(p.has("cystic-fibrosis")) return "Cystic fibrosis — Living Promise Q3a decline";
+      if(p.has("pulmonary-fibrosis")) return "Pulmonary fibrosis — Living Promise Q3a decline";
+      // Q3b: insulin shock, diabetic coma, diabetic amputation, ESRD/dialysis
+      if(p.has("diabetes-amputation")) return "Diabetic amputation — Living Promise Q3b decline";
+      if(p.has("kidney")) return "End-stage renal disease / dialysis — Living Promise Q3b decline";
+      // Q4: past 12 mo pending surgery, heart disease/surgery in past 12 mo
+      // (Heart event recency from clarification — if explicitly "recent" = <1 yr, decline)
+      const r4 = p.recency ? p.recency : (() => null);
+      if(p.has("heart-attack") && r4("heart-attack") === "recent")
+        return "Heart event within past 12 months — Living Promise Q4 decline";
+      // Q5: cancer treated past 2 yrs
+      if(p.has("cancer-recent")) return "Cancer treated within past 2 yrs — Living Promise Q5 decline";
+      // Build chart (verified from April 2026 UW Guide build chart):
+      // Living Promise Graded Max ~BMI 46; Level Max ~BMI 43; TLE/IULE ~BMI 42
+      if(p.product==="fe" && p.bmi && p.bmi > 46) return "BMI >46 — outside Living Promise Graded build chart";
+      if(p.product==="term" && p.bmi && p.bmi > 42) return "BMI >42 — outside Term Life Express build chart";
+      if(p.product==="wl" && p.bmi && p.bmi > 46) return "BMI >46 — outside Living Promise build chart";
+
+      // === Term Life Express MULTIPLE IMPAIRMENTS knockouts ===
+      // (Verified from MoO Simplified Issue Underwriting Guide, April 2026, page 5)
+      if(p.product==="term"){
+        if(p.has("diabetes-neuropathy")||p.has("diabetes-retinopathy")||p.has("diabetes-circulation")||p.has("diabetes-uncontrolled")||p.has("diabetes-insulin"))
+          return "Diabetes with ANY complications — Term Life Express Multiple Impairments decline";
+        if(p.has("diabetes-t2") && p.age>=45 && (p.tobacco==="smoker"||p.tobacco==="chew"||p.tobacco==="vape"||p.tobacco==="cigar"))
+          return "Diabetes age >45 + tobacco — Term Life Express Multiple Impairments decline";
+        if(p.bmi && p.bmi > 38 && p.has("hbp"))
+          return "Table 2+ build + hypertension — Term Life Express Multiple Impairments decline";
+        // Note: previous decline/Table 4+ from UO = not eligible for Express (not modeled — agent must verify)
+      }
+
+      // === Age limits (verified from April 2026 portfolio brochure) ===
+      // Term Life Express: term length determines max age
+      if(p.product==="term"){
+        if(p.age<18) return "Term Life Express: 18 minimum";
+        // Default to 10-year term if not specified (most permissive)
+        const t = p.term || 10;
+        if(t<=10 && p.age>75) return "Term Life Express 10-yr: ages 18–75";
+        if(t<=15 && t>10 && p.age>70) return "Term Life Express 15-yr: ages 18–70";
+        if(t<=20 && t>15 && p.age>60) return "Term Life Express 20-yr: ages 18–60";
+        if(t<=30 && t>20 && p.age>50) return "Term Life Express 30-yr: ages 18–50";
+      }
+      if(p.product==="fe" && (p.age<45 || p.age>85)) return "Living Promise Level: ages 45–85";
+      if(p.product==="wl" && (p.age<45 || p.age>85)) return "Living Promise: ages 45–85";
+
+      // === Face amount caps (verified from April 2026 portfolio) ===
+      if(p.product==="fe" && p.face){
+        if(p.face>50000) return "Living Promise Level max face $50k";
+      }
+      if(p.product==="term" && p.face){
+        if(p.age>=61 && p.face>350000) return "Term Life Express ages 61–75 capped at $350k";
+        if(p.age>=51 && p.age<=60 && p.face>450000) return "Term Life Express ages 51–60 capped at $450k";
+        if(p.age<=50 && p.face>550000) return "Term Life Express ages 18–50 capped at $550k";
+      }
+      return null;
+    },
+    score(p){
+      let s=3, why=[], flags=[];
+      // Detect Part 2 conditions → Graded benefit only
+      const gradedReasons = [];
+      if(p.has("copd")) gradedReasons.push("COPD/emphysema");
+      if(p.has("liver")) gradedReasons.push("Hep C/liver");
+      if(p.has("diabetes-neuropathy")) gradedReasons.push("diabetic neuropathy");
+      if(p.has("diabetes-retinopathy")) gradedReasons.push("diabetic retinopathy");
+      if(p.has("diabetes-circulation")) gradedReasons.push("diabetic PVD/PAD");
+      if(p.has("diabetes-uncontrolled")) gradedReasons.push("uncontrolled diabetes");
+      // Heart/stroke 1-2 yrs ago → Q8 Graded; 2+ yrs → no impact
+      const rr = p.recency ? p.recency : (() => null);
+      const heartRec = rr("heart-attack");
+      const strokeRec = rr("stroke-tia");
+      if(p.has("heart-attack") && (heartRec === "mid" || heartRec === undefined || heartRec === "unknown")) gradedReasons.push("heart event (within 2 yrs)");
+      if(p.has("stroke-tia") && (strokeRec === "mid" || strokeRec === undefined || strokeRec === "unknown")) gradedReasons.push("stroke/TIA (within 2 yrs)");
+      if(p.has("afib")) gradedReasons.push("arrhythmia");
+      if(p.has("bipolar")) gradedReasons.push("bipolar/schizophrenia (4 yrs)");
+      if(p.has("ms")) gradedReasons.push("MS/Parkinson's (4 yrs)");
+      if(p.has("cancer-remission")) gradedReasons.push("cancer (4 yrs)");
+      if(p.has("dui")) gradedReasons.push("DUI/felony (2 yrs)");
+      const graded = gradedReasons.length > 0;
+
+      if(p.product==="fe"){
+        s += graded ? 3 : 5;
+        why.push(graded
+          ? `Living Promise GRADED Benefit Plan — eligible (${gradedReasons.join(", ")})`
+          : "Living Promise LEVEL Benefit Plan — full day-one DB, 45–85, $2k–$50k");
+        if(graded){
+          flags.push({c:"warn",t:"Graded: yr 1–2 pays 110% of premiums on natural death, full DB yr 3+"});
+          flags.push({c:"warn",t:"Graded plan: 45–80 only, $2k–$20k face"});
+        }
+      }
+      if(p.product==="term"){
+        if(graded) return {score:0}; // Term Life Express requires clean Part 1 + Part 2
+        s += 4;
+        why.push("Term Life Express — simplified-issue term 10/15/20/30 yr");
+        why.push("Face $25k–$550k (ages 18–50); $25k–$450k (51–60); $25k–$350k (61–75)");
+      }
+      if(p.product==="wl"){
+        s += graded ? 2 : 3;
+        why.push(graded ? "Living Promise Graded Benefit Plan" : "Living Promise Level Benefit Plan");
+      }
+      if(p.has("diabetes-t2") && !graded){ s+=2; why.push("OK with controlled Type 2 diabetes (onset age ≥45)"); }
+      if(p.has("hbp")||p.has("chol")) s+=1;
+      if(p.has("sleep-apnea")){ s+=1; why.push("OK with treated sleep apnea (Q2c oxygen exclusion)"); }
+      if(p.has("depression") && !p.has("bipolar")) s+=1;
+      if(p.tobacco==="none") s+=1;
+      return {score:s, why, flags};
+    }
+  },
+  {
+    // SOURCES (verified from carrier-published documents, May 2026):
+    // - American Amicable Agent Guide form #3082 (americanamicable.com — public PDF)
+    // - American Amicable Senior Choice Product Information sheet (yigagents.com mirror,
+    //   form #3085 source) — issue ages, face caps, plan structure, commission/payment options
+    // - Senior Choice plan structure: Immediate (full DB day 1), Graded (30%/70%/100% schedule),
+    //   ROP (Return of Premium + 10% during graded, 100% accidental all years)
+    name:"American Amicable (Senior Choice + Termsetter)",
+    products:["term","fe","wl"],
+    knockouts(p){
+      // === Senior Choice universal knockouts (verified — declined on ALL 3 plans) ===
+      // Per carrier app: currently hospitalized, bedridden, wheelchair (chronic), nursing
+      // home (chronic), on oxygen, hospice/home health, disease-caused amputation, ANY
+      // cancer (except basal-cell skin), needs ADL assistance, organ transplant, dialysis,
+      // CHF, Alzheimer's/dementia, ALS, liver/respiratory failure, mental incapacity,
+      // end-stage/terminal illness diagnosed within 1 year.
+      if(p.has("hiv")) return "HIV/AIDS — Senior Choice ineligible all plans";
+      if(p.has("oxygen")) return "On oxygen — Senior Choice universal decline";
+      if(p.has("hospice")) return "Hospice/nursing home/bed-bound — Senior Choice universal decline";
+      if(p.has("adl")) return "Needs ADL assistance — Senior Choice universal decline";
+      if(p.has("wheelchair")) return "Wheelchair/scooter (chronic) — Senior Choice universal decline";
+      if(p.has("diabetes-amputation")) return "Disease-caused amputation — Senior Choice universal decline";
+      if(p.has("kidney")) return "Kidney dialysis — Senior Choice universal decline";
+      if(p.has("als")) return "ALS — Senior Choice universal decline";
+      if(p.has("alzheimers")) return "Alzheimer's/Dementia — Senior Choice universal decline";
+      if(p.has("paralysis")) return "Paralysis — Senior Choice universal decline";
+      if(p.has("transplant")) return "Organ transplant — Senior Choice universal decline";
+      if(p.has("cancer-recent")) return "Active cancer or treatment <2 yrs — Senior Choice universal decline";
+      if(p.has("liver")) return "Liver failure/cirrhosis — Senior Choice universal decline";
+      if(p.has("chf")) return "Congestive heart failure — Senior Choice universal decline";
+      // CHF / respiratory failure / hospice not yet modeled as separate chips
+      // BMI cap: AmAm published build chart caps ~BMI 48-50 depending on height
+      if(p.bmi && p.bmi >= 50) return "BMI 50+ — outside Senior Choice build chart";
+
+      // === Age limits (verified from Senior Choice product sheet) ===
+      if(p.product==="fe" && (p.age<50 || p.age>85)) return "Senior Choice FE: ages 50–85";
+      if(p.product==="term" && (p.age<18 || p.age>70)) return "Termsetter/Pinnacle term: ages 18–70";
+      if(p.product==="wl" && (p.age<18 || p.age>85)) return "Home Certainty WL: ages 18–85";
+
+      // === Face caps (verified from Senior Choice product sheet) ===
+      if(p.product==="fe" && p.face){
+        if(p.age>=76 && p.face>20000) return "Senior Choice ages 76–85 capped at $20k";
+        if(p.face>35000) return "Senior Choice ages 50–75 capped at $35k";
+        if(p.face<2500) return "Senior Choice minimum face $2,500";
+      }
+      return null;
+    },
+    score(p){
+      let s=3, why=[], flags=[];
+      // Plan tier triggers (Senior Choice Graded plan)
+      const gradedReasons = [];
+      if(p.has("copd")) gradedReasons.push("COPD/chronic lung");
+      if(p.has("cancer-remission")) gradedReasons.push("cancer history >2 yrs");
+      if(p.has("heart-attack")) gradedReasons.push("heart event");
+      if(p.has("stroke-tia")) gradedReasons.push("stroke/TIA");
+      if(p.has("diabetes-neuropathy")||p.has("diabetes-retinopathy")||p.has("diabetes-circulation"))
+        gradedReasons.push("diabetic complications");
+      if(p.has("diabetes-uncontrolled")) gradedReasons.push("uncontrolled diabetes");
+      if(p.has("diabetes-insulin")) gradedReasons.push("insulin-dependent diabetes");
+      if(p.has("bipolar")) gradedReasons.push("bipolar/schizophrenia");
+      if(p.has("rx-opioid")) gradedReasons.push("opioid Rx");
+      if(p.has("afib")) gradedReasons.push("arrhythmia");
+      const graded = gradedReasons.length > 0;
+
+      if(p.product==="fe"){
+        s += graded ? 3 : 5;
+        if(graded){
+          why.push(`Senior Choice GRADED — eligible (${gradedReasons.join(", ")})`);
+          flags.push({c:"warn",t:"Graded: 30% face yr 1, 70% face yr 2, 100% yr 3+"});
+          flags.push({c:"warn",t:"ROP alternative: returns premium + 10% interest during graded (3-yr <65, 2-yr 65+)"});
+        } else {
+          why.push("Senior Choice IMMEDIATE — full death benefit day one");
+          why.push("Issue ages 50–85, $2,500–$35k face (50–75) / $2,500–$20k (76–85)");
+          if(p.has("diabetes-t2")) why.push("Controlled diabetes OK on Immediate");
+          if(p.has("hbp")||p.has("chol")) why.push("Controlled BP/cholesterol OK on Immediate");
+        }
+      }
+      if(p.product==="term"){
+        if(graded) return {score:0}; // Termsetter doesn't have a graded variant
+        s+=3;
+        why.push("Termsetter/Pinnacle — simplified-issue term, ages 18–70");
+        if(p.exam==="noexam") s+=2;
+      }
+      if(p.product==="wl"){
+        s += graded ? 2 : 3;
+        why.push("Home Certainty whole life");
+      }
+      if(p.tobacco==="none") s+=1;
+      // State restriction note
+      flags.push({c:"warn",t:"Senior Choice not available in MT, NH, NY, PR"});
+      return {score:s, why, flags};
+    }
+  },
+  {
+    // SOURCE: Transamerica FFIUL II Express vs FE Express Comparison Flyer
+    // (form #4853672, 09/25, "For Agent Use Only"). Carrier-published Accept/Decline
+    // matrix. Universal decline list verbatim from page 1.
+    // Plus: FE Express Solution / Graded FE Express Solution consumer brochures (01/24)
+    // for issue ages, face caps, ALB calc.
+    name:"Transamerica (FE Express + Graded FE Express)",
+    products:["term","fe","wl","iul"],
+    knockouts(p){
+      // ===== UNIVERSAL DECLINES (verbatim from 09/25 carrier matrix) =====
+      if(p.has("als")) return "ALS — FE Express universal decline";
+      if(p.has("alzheimers")) return "Alzheimer's / Dementia — FE Express universal decline";
+      if(p.has("paralysis")) return "Paralysis — FE Express universal decline";
+      if(p.has("transplant")) return "Organ transplant — FE Express universal decline";
+      if(p.has("hospice")) return "Hospice/nursing home/bed-bound — FE Express implicit decline";
+      if(p.has("mental-incapacity")) return "Intellectual disability/Down syndrome — FE Express universal decline";
+      // Single DUI <2yr and Felony <2yr — not modeled per-date; flag if DUI chip set
+      if(p.has("dui")) {
+        // Conservative: assume <2 yrs unless user provides notes — flag instead of hard knockout
+        // Real check requires DUI date in notes
+      }
+
+      // BMI cap (verified from flyer)
+      if(p.bmi && p.bmi > 48) return "BMI >48 — FE Express decline";
+
+      // Conditions NOT on the 09/25 flyer (conservatively retained as knockouts pending
+      // Field Underwriting Guide; user should verify):
+      if(p.has("hiv")) return "HIV/AIDS — likely decline (not on flyer; verify with UW)";
+      if(p.has("cancer-recent")) return "Cancer onset <2 yrs — likely decline (verify with UW)";
+      if(p.has("diabetes-amputation")) return "Amputation (non-trauma) — likely decline (verify with UW)";
+
+      // Age & face limits (verified from FE Express brochure 01/24)
+      if(p.product==="fe"){
+        if(p.age<18 || p.age>85) return "FE Express: 18–85 (ALB)";
+        if(p.face){
+          if(p.age>=76 && p.face>25000) return "FE Express ages 76–85 capped at $25k";
+          if(p.face>50000) return "FE Express max face $50k (ages 18–75)";
+        }
+      }
+      if(p.product==="term" && (p.age<18 || p.age>80)) return "Trendsetter Super term: 18–80";
+
+      // ===== Trendsetter Super (fully-UW term) — STRICTER list =====
+      // FE Express conditions like COPD/MS/dialysis still likely decline on fully-UW term.
+      if(p.product==="term"||p.product==="iul"){
+        if(p.has("oxygen")) return "Oxygen use — Trendsetter Super (fully-UW) decline";
+        if(p.has("heart-attack")) return "Recent heart attack — Trendsetter Super decline";
+        if(p.has("kidney")) return "Kidney disease / dialysis — Trendsetter Super decline";
+        if(p.has("ms")) return "MS — Trendsetter Super decline (use FE Express instead)";
+        if(p.has("bipolar")) return "Bipolar/schizophrenia — Trendsetter Super decline";
+        if(p.has("liver")) return "Liver disease — Trendsetter Super decline";
+        if(p.has("copd")) return "COPD — Trendsetter Super decline (use FE Express instead)";
+        if(p.has("diabetes-uncontrolled")) return "Uncontrolled A1C — Trendsetter Super decline";
+      }
+      return null;
+    },
+    score(p){
+      let s=3, why=[], flags=[];
+      // Detect conditions that route to Graded FE Express (vs full FE Express).
+      // Note: per 09/25 matrix, all these are ACCEPTED — graded is for severity/risk class,
+      // not a knockout. Most agents will quote Graded Non-Tobacco as the conservative class.
+      const gradedConditions = [];
+      if(p.has("copd")) gradedConditions.push("COPD/emphysema");
+      if(p.has("oxygen")) gradedConditions.push("oxygen use");
+      if(p.has("heart-attack")) gradedConditions.push("heart event/CAD");
+      if(p.has("stroke-tia")) gradedConditions.push("stroke/TIA");
+      if(p.has("kidney")) gradedConditions.push("dialysis");
+      if(p.has("liver")) gradedConditions.push("cirrhosis");
+      if(p.has("diabetes-uncontrolled")) gradedConditions.push("uncontrolled A1C");
+      if(p.has("diabetes-neuropathy")||p.has("diabetes-retinopathy")||p.has("diabetes-circulation"))
+        gradedConditions.push("diabetic complications");
+      if(p.has("bipolar")) gradedConditions.push("bipolar");
+      if(p.has("ms")) gradedConditions.push("MS");
+      const graded = gradedConditions.length > 0;
+
+      // Detect Living Benefit Rider knockouts (separate from base policy)
+      const riderKnockouts = [];
+      if(p.has("oxygen")||p.has("diabetes-amputation")||p.has("ms")||p.has("epilepsy"))
+        ; // these may or may not knock out the rider — verify with carrier UW
+      if(p.has("rx-opioid")) riderKnockouts.push("opioid Rx may indicate ADL issues");
+      // ADL/wheelchair/cane info not collected; flag generally
+
+      if(p.product==="fe"){
+        s += graded ? 5 : 6;
+        if(graded){
+          if(p.age>80){
+            why.push("Graded FE Express: 18–80 only — client too old for graded version");
+            return {score:0};
+          }
+          why.push(`Graded FE Express Solution — accepted for ${gradedConditions.join(", ")}`);
+          why.push("Per 09/25 carrier matrix: these conditions are explicitly ACCEPTED");
+          why.push("110% of premiums returned yr 1–2 (natural death), full DB yr 3+ or any accidental");
+          why.push("Max $25k face on Graded version");
+          flags.push({c:"warn",t:"Quote at Graded Non-Tobacco — system may upgrade class on submit"});
+          flags.push({c:"warn",t:"Sample: $15K ≈ $110/mo at age 57 Graded Non-Tobacco"});
+        } else {
+          why.push("FE Express Solution — Day-one full death benefit");
+          why.push("Issue ages 18–85 (ALB); $5k–$50k face (18–75), $5k–$25k (76–85)");
+          if(p.has("diabetes-t2")||p.has("diabetes-t1")) why.push("Diabetes (T1 or T2) explicitly accepted per 09/25 matrix");
+        }
+        // Living Benefit Rider flag — applies regardless of base product approval
+        if(p.has("oxygen")||p.has("diabetes-amputation")||p.has("ms")||p.has("epilepsy")
+           ||p.has("crohn")||p.has("rx-opioid")){
+          flags.push({c:"warn",t:"Living Benefit Rider may be declined; base policy still issues"});
+        }
+      }
+      if(p.product==="term"){
+        if(graded) return {score:0};
+        s += 4;
+        why.push("Trendsetter Super — fully-UW term, 10–30 yr");
+      }
+      if(p.product==="iul"){
+        s += 3;
+        why.push("FFIUL II Express — accelerated UW IUL (stricter than FE Express)");
+        // FFIUL II has its own decline list per the 09/25 flyer
+        if(p.bmi && p.bmi > 39){ s -= 3; flags.push({c:"warn",t:"BMI >39 = FFIUL II Express decline; try FE Express instead"}); }
+        if(p.has("diabetes-t1")){ s -= 3; flags.push({c:"warn",t:"T1 diabetes = FFIUL II Express decline"}); }
+        if(p.has("copd")||p.has("heart-attack")||p.has("ms")||p.has("bipolar")||p.has("kidney")){
+          s -= 5; flags.push({c:"warn",t:"This condition = FFIUL II Express decline; use FE Express"});
+        }
+      }
+      if(p.product==="wl"){ s += 2; why.push("10-Pay Solution available"); }
+      if(p.healthy) s+=2;
+      if(p.has("hbp")||p.has("chol")) s+=1;
+      return {score:s, why, flags};
+    }
+  },
+  {
+    // SOURCE: American National Legacy product brochure — GUARANTEED ISSUE.
+    // No health questions, ages 50-80, $5k-$25k face. 2-yr graded natural,
+    // day-one accidental. Cannot be declined for health.
+    name:"American National Legacy (Guaranteed Issue)",
+    products:["fe"],
+    knockouts(p){
+      // ONLY age and state knockouts — no health questions exist
+      if(p.age < 50) return "ANICO Legacy: 50–80 only (client too young)";
+      if(p.age > 80) return "ANICO Legacy: 50–80 only (client too old)";
+      // (NY not available — not modeled since user is 21-state appointment)
+      return null;
+    },
+    score(p){
+      let s=4, why=[], flags=[];
+      why.push("GUARANTEED ISSUE — no health questions, cannot be declined");
+      why.push("Ages 50–80, max $25k face, 2-yr graded natural causes, day-one accidental");
+      flags.push({c:"warn",t:"Backstop carrier — use after declines elsewhere; premium ~30-50% higher"});
+      // Always rank lower than a real underwritten option but always available
+      s += 2;
+      if(p.face && p.face > 25000){
+        flags.push({c:"warn",t:"Face cap $25k — drop face to qualify"});
+        s -= 1;
+      }
+      // Becomes #1 when client would otherwise be uninsurable
+      if(p.has("hiv")||p.has("oxygen")||p.has("diabetes-amputation")||p.has("cancer-recent")
+         ||p.has("kidney")||p.has("ms")){
+        s += 5;
+        why.push("Top pick — heavy impairment makes this the safe close");
+      }
+      return {score:s, why, flags};
+    }
+  },
+  {
+    // SOURCE: ANICO Underwriting Guidelines (pinneyinsurance.com)
+    // FULLY-UNDERWRITTEN — table-rates more than declines.
+    name:"American National (Signature Term/WL/IUL)",
+    products:["term","wl","iul"],
+    knockouts(p){
+      // True declines on fully-UW products
+      if(p.has("hiv")) return "HIV positive — Signature Term decline";
+      if(p.has("cancer-recent")) return "Cancer onset/treatment within 2 yrs — decline";
+      if(p.has("diabetes-amputation")) return "Diabetic amputation (advanced vascular) — decline";
+      if(p.has("kidney")) return "ESRD / dialysis — decline";
+      if(p.has("oxygen")) return "Active oxygen therapy — decline";
+      if(p.has("als")) return "ALS — Signature Term decline";
+      if(p.has("alzheimers")) return "Alzheimer's/Dementia — Signature Term decline";
+      if(p.has("paralysis")) return "Paralysis — Signature Term decline";
+      if(p.has("transplant")) return "Organ transplant — Signature Term decline";
+      if(p.has("ms")) return "Late-stage MS/Parkinson's — fully-UW decline (early stage may table-rate)";
+      if(p.has("rx-opioid")) return "Active chronic opioid Rx — decline";
+      if(p.has("chf")) return "CHF — Signature Term decline";
+      if(p.has("hospice")) return "Hospice/nursing home/bed-bound — Signature Term decline";
+      if(p.has("adl")) return "Needs ADL assistance — Signature Term decline";
+      if(p.has("wheelchair")) return "Wheelchair/scooter (chronic) — Signature Term decline";
+      if(p.has("sickle-cell")) return "Sickle cell anemia — Signature Term decline";
+      if(p.bmi && p.bmi >= 45) return "BMI 45+ — outside ANICO build chart";
+      if(p.product==="term" && (p.age<18 || p.age>75)) return "Signature Term: 18–75";
+      if(p.product==="wl" && (p.age<0 || p.age>80)) return "Signature WL: 0–80";
+      if(p.product==="iul" && (p.age<0 || p.age>80)) return "Signature IUL: 0–80";
+      return null;
+    },
+    score(p){
+      let s=3, why=[], flags=[];
+      // ANICO will TABLE-RATE these (not decline)
+      const rated = [];
+      if(p.has("diabetes-t2")) rated.push("diabetes");
+      if(p.has("diabetes-insulin")) rated.push("insulin-dependent");
+      if(p.has("diabetes-uncontrolled")) rated.push("uncontrolled A1C");
+      if(p.has("diabetes-neuropathy")||p.has("diabetes-retinopathy")||p.has("diabetes-circulation"))
+        rated.push("diabetic complications");
+      if(p.has("copd")) rated.push("COPD");
+      if(p.has("heart-attack")) rated.push("heart attack history");
+      if(p.has("stroke-tia")) rated.push("stroke/TIA");
+      if(p.has("afib")) rated.push("AFib");
+      if(p.has("liver")) rated.push("hepatitis");
+      if(p.has("bipolar")) rated.push("bipolar/schizo");
+      if(p.has("cancer-remission")) rated.push("cancer in remission");
+      if(p.has("dui")) rated.push("DUI history");
+      if(p.has("alcohol-rehab")) rated.push("alcohol history");
+
+      if(p.product==="term"){
+        s+=4;
+        why.push("Signature Term — living benefits (chronic/critical/terminal) at NO extra cost");
+        if(p.face && p.face>=250000) s+=1;
+        if(p.healthy) s+=2;
+      }
+      if(p.product==="iul"){ s+=3; why.push("Signature IUL with accelerated benefits rider"); }
+      if(p.product==="wl"){ s+=3; why.push("Signature Whole Life with living benefits"); }
+
+      if(rated.length){
+        s -= 2;
+        flags.push({c:"warn",t:`Likely table-rated for: ${rated.join(", ")}`});
+        why.push("Fully-UW carrier: expect rate-up rather than decline");
+      } else if(p.tobacco==="none"){
+        s += 1;
+      }
+      return {score:s, why, flags};
+    }
+  },
+  {
+    // SOURCE: Aflac Final Expense Whole Life Underwriting Guideline Excerpts
+    // (V0822, August 2022, uploaded by user). Underwritten by Tier One Insurance Co
+    // (Aflac subsidiary), administered by Aetna Life Insurance Co.
+    // Three benefit tiers: Preferred Level / Standard Level / Modified.
+    //   - All Part A/B/C answered NO → Preferred Level (best rates, day 1 full DB)
+    //   - Only Part C YES → Standard Level (day 1 full DB at higher rates)
+    //   - Part B YES → Modified benefit ceiling
+    //   - Part A YES → DECLINE (no coverage)
+    name:"Aflac Final Expense Whole Life",
+    products:["fe"], // FE Whole Life only — Aflac term and supplemental are separate products
+    knockouts(p){
+      // ===== PART A — UNIVERSAL DECLINES (verbatim from carrier guide) =====
+      // CURRENTLY confined/advised to enter:
+      if(p.has("hospice")) return "Confined to hospital/nursing/hospice/bed-bound — Aflac Part A decline";
+      if(p.has("adl")) return "Needs ADL assistance — Aflac Part A decline";
+      // Use of wheelchair/mobility scooter for chronic illness
+      if(p.has("wheelchair")) return "Wheelchair/scooter for chronic illness — Aflac Part A decline";
+      if(p.has("paralysis")) return "Permanent paralysis — Aflac Part A decline";
+      // ONE YEAR knockouts:
+      if(p.has("oxygen")) return "Oxygen equipment within past year (excluding CPAP) — Aflac Part A decline";
+      if(p.has("kidney")) return "Kidney dialysis within past year — Aflac Part A decline";
+      // EVER knockouts:
+      if(p.has("transplant")) return "Organ or bone marrow transplant ever — Aflac Part A decline";
+      if(p.has("diabetes-amputation")) return "Amputation from diabetic complication — Aflac Part A decline";
+      if(p.has("hiv")) return "HIV/AIDS/ARC ever — Aflac Part A decline";
+      if(p.has("als")) return "ALS / Lou Gehrig's — Aflac Part A decline";
+      if(p.has("alzheimers")) return "Alzheimer's / Dementia — Aflac Part A decline";
+      if(p.has("chf")) return "CHF (incl. hypertensive/diastolic HF) — Aflac Part A decline";
+      if(p.has("sickle-cell")) return "Sickle cell anemia — Aflac Part A decline";
+      if(p.has("cystic-fibrosis")) return "Cystic fibrosis — Aflac Part A decline";
+      if(p.has("pulmonary-fibrosis")) return "Pulmonary fibrosis — Aflac Part A decline";
+      if(p.has("mental-incapacity")) return "Mental incapacity / developmental disability — Aflac Part A decline";
+      // 2 YEAR knockouts:
+      if(p.has("cancer-recent")) return "Chemo/radiation for cancer in past 2 yrs — Aflac Part A decline";
+      // Multiple cancer occurrences ever = decline
+      if(p.has("cancer-recent") && p.has("cancer-remission")) return "Multiple cancer occurrences — Aflac Part A decline";
+      // Cancerous brain tumor: Part A decline (treated like cancer)
+      if(p.has("brain-tumor") && p.has("cancer-recent")) return "Cancerous brain tumor — Aflac Part A decline";
+
+      // ===== Age limits (from generic Aflac FE WL product specs) =====
+      if(p.product==="fe" && (p.age<45 || p.age>85)) return "Aflac FE Whole Life: ages 45–85 (verify with state)";
+      return null;
+    },
+    score(p){
+      let s=2, why=[], flags=[];
+
+      // Determine highest tier the client could land in
+      // Aflac applies recency for heart events, stroke, aneurysm, etc:
+      //   <1 yr = Part B (Modified)
+      //   1-2 yr = Part C (Standard)
+      //   2+ yr = Preferred (no impact on tier)
+      const r = p.recency || (() => null);
+      const partB = [];
+      // Heart event
+      const heartR = r("heart-attack");
+      if(p.has("heart-attack")){
+        if(heartR === "recent" || heartR === undefined || heartR === "unknown") partB.push("heart attack / heart procedure <1 yr");
+      }
+      // AFib / pacemaker / aneurysm
+      const afibR = r("afib");
+      if(p.has("afib")){ if(afibR === "recent" || afibR === undefined || afibR === "unknown") partB.push("arrhythmia/cardiomyopathy <1 yr"); }
+      const pacemakerR = r("pacemaker");
+      if(p.has("pacemaker")){ if(pacemakerR === "recent" || pacemakerR === undefined || pacemakerR === "unknown") partB.push("pacemaker/defibrillator <1 yr"); }
+      const aneuR = r("aneurysm");
+      if(p.has("aneurysm")){ if(aneuR === "recent" || aneuR === undefined || aneuR === "unknown") partB.push("aneurysm <1 yr"); }
+      // Stroke / TIA
+      const strokeR = r("stroke-tia");
+      if(p.has("stroke-tia")){
+        if(strokeR === "recent" || strokeR === undefined || strokeR === "unknown") partB.push("stroke/TIA <1 yr");
+      }
+      if(p.has("brain-tumor") && !p.has("cancer-recent")) partB.push("non-cancerous brain tumor <1 yr");
+      if(p.has("diabetes-neuropathy")||p.has("diabetes-retinopathy")||p.has("diabetes-circulation"))
+        partB.push("diabetic complications <2 yrs");
+      if(p.has("diabetes-uncontrolled")) partB.push("uncontrolled diabetes");
+      if(p.has("kidney")) partB.push("kidney disease (non-dialysis) <2 yrs");
+      if(p.has("alcohol-rehab")) partB.push("alcohol abuse / treatment <2 yrs");
+      if(p.has("rx-opioid")) partB.push("drug abuse / Rx misuse <2 yrs");
+      if(p.has("dui")) partB.push("DUI conviction <2 yrs");
+      if(p.has("liver")) partB.push("liver disease / cirrhosis <2 yrs");
+
+      // Part C triggers → Standard Level ceiling
+      const partC = [];
+      // Heart/stroke that's 1-2 yrs ago → Standard tier instead of Modified
+      if(p.has("heart-attack") && heartR === "mid") partC.push("heart event 1–2 yrs ago");
+      if(p.has("stroke-tia") && strokeR === "mid") partC.push("stroke/TIA 1–2 yrs ago");
+      if(p.has("afib") && afibR === "mid") partC.push("arrhythmia 1–2 yrs ago");
+      if(p.has("pacemaker") && pacemakerR === "mid") partC.push("pacemaker 1–2 yrs ago");
+      if(p.has("aneurysm") && aneuR === "mid") partC.push("aneurysm 1–2 yrs ago");
+      if(p.has("ms")) partC.push("MS or Parkinson's (ever)");
+      if(p.has("copd")) partC.push("COPD / chronic bronchitis / emphysema");
+      if(p.has("lupus")) partC.push("Systemic lupus (ever)");
+      if(p.has("cancer-remission")) partC.push("cancer 2+ yrs out (no recent chemo/radiation)");
+
+      // If heart/stroke/etc is 2+ yrs ago — no tier impact (Preferred eligible)
+      // These are filtered out of partB and partC above.
+
+      let tier;
+      if(partB.length) tier = "modified";
+      else if(partC.length) tier = "standard";
+      else tier = "preferred";
+
+      if(p.product==="fe"){
+        if(tier === "modified"){
+          s += 4;
+          why.push(`Aflac MODIFIED Benefit — eligible for: ${partB.join(", ")}`);
+          flags.push({c:"warn",t:"Modified tier: 1st-yr DB = return of premiums; 2nd-yr DB = partial; full DB yr 3+"});
+        } else if(tier === "standard"){
+          s += 6;
+          why.push(`Aflac STANDARD LEVEL Benefit — full day-one DB at standard rates`);
+          why.push(`Trigger: ${partC.join(", ")}`);
+        } else {
+          s += 7;
+          why.push("Aflac PREFERRED LEVEL Benefit — best rates, day-one full DB");
+          if(p.has("diabetes-t2")||p.has("diabetes-t1")) why.push("Diabetes (no complications) OK at Preferred");
+          if(p.has("hbp")||p.has("chol")) why.push("Controlled BP/cholesterol OK at Preferred");
+          if(p.has("sleep-apnea")) why.push("CPAP for sleep apnea is allowed (oxygen exclusion)");
+        }
+      }
+      if(p.has("epilepsy")) flags.push({c:"warn",t:"Verify seizure/epilepsy class with UW — not in core decline list"});
+      if(p.tobacco==="none") s+=1;
+      return {score:s, why, flags};
+    }
+  },
+  {
+    // SOURCE: Chubb/Combined Insurance LifeTime Benefit Term broker materials.
+    // Worksite simplified issue: up to $250k death benefit with simple health questions;
+    // up to $150k guaranteed acceptance for eligible new employees.
+    name:"Combined Insurance (Chubb) — appointment pending",
+    products:["term","wl","fe"],
+    knockouts(p){
+      if(p.has("hiv")) return "HIV positive — Combined simplified-issue decline";
+      if(p.has("oxygen")) return "Oxygen use — Combined simplified-issue decline";
+      if(p.has("hospice")) return "Hospice/nursing home/bed-bound — Combined decline";
+      if(p.has("adl")) return "Needs ADL assistance — Combined decline";
+      if(p.has("wheelchair")) return "Wheelchair/scooter (chronic) — Combined decline";
+      if(p.has("diabetes-amputation")) return "Diabetic amputation — Combined simplified-issue decline";
+      if(p.has("cancer-recent")) return "Recent cancer (<2 yrs) — Combined decline";
+      if(p.has("kidney")) return "Dialysis/ESRD — Combined decline";
+      if(p.has("chf")) return "Congestive heart failure — Combined decline";
+      if(p.has("sickle-cell")) return "Sickle cell anemia — Combined decline";
+      if(p.has("als")) return "ALS — Combined decline";
+      if(p.has("alzheimers")) return "Alzheimer's/Dementia — Combined decline";
+      if(p.has("paralysis")) return "Paralysis — Combined decline";
+      if(p.has("transplant")) return "Organ transplant — Combined decline";
+      if(p.has("ms")) return "MS / Parkinson's — Combined simplified-issue decline (verify with UW)";
+      if(p.bmi && p.bmi >= 45) return "BMI 45+ — outside Combined build chart";
+      if(p.product==="term" && (p.age<18 || p.age>70)) return "Combined term: 18–70 only";
+      if(p.product==="fe"   && (p.age<50 || p.age>80)) return "Combined FE: 50–80 only";
+      return null;
+    },
+    score(p){
+      let s=2, why=[], flags=[];
+      flags.push({c:"warn",t:"Appointment still in progress — do not quote until active"});
+      flags.push({c:"warn",t:"Verify with Combined UW — public guide limited"});
+      if(p.face && p.face <= 150000){
+        flags.push({c:"warn",t:"$150k guaranteed-acceptance route may apply for eligible new employees"});
+      }
+      if(p.product==="term"){ s+=2; why.push("LifeTime Benefit Term up to $250k with simple health Qs"); }
+      if(p.product==="wl"){ s+=2; why.push("Whole life — simplified issue"); }
+      if(p.product==="fe"){ s+=1; why.push("FE option via Combined"); }
+      if(p.has("copd")||p.has("heart-attack")||p.has("stroke-tia")||p.has("liver")||p.has("bipolar")
+         ||p.has("diabetes-uncontrolled")||p.has("diabetes-insulin")||p.has("diabetes-neuropathy")
+         ||p.has("diabetes-retinopathy")||p.has("diabetes-circulation")){
+        flags.push({c:"warn",t:"Likely simplified-issue decline — try $150k GI worksite route"});
+        s -= 2;
+      }
+      if(p.healthy) s+=1;
+      return {score:s, why, flags};
+    }
+  }
+];
+
+// ----------------------------- Keyword parser ---------------------------------
+// Maps condition IDs to phrases the agent might type. Order matters: we run
+// the most specific matchers (e.g. diabetic amputation) before general ones
+// (e.g. plain diabetes) so a richer phrase doesn't get downgraded.
+const PARSE_RULES = [
+  // ===== UNIVERSAL DECLINE FLAGS (catch these early — they're hard knockouts) ======
+  {id:"hospice", patterns:[
+    /\bhospice\b/, /comfort care/, /palliative/,
+    /nursing home/, /assisted living/, /memory care/, /skilled nursing/,
+    /\bbed[- ]?(bound|ridden)\b/, /stays in bed/, /can(no)?t get out of bed/,
+    /\bconfined to (bed|hospital|facility)/, /currently hospitalized/, /in the hospital now/
+  ]},
+  {id:"adl", patterns:[
+    /needs help (bathing|dressing|eating|walking|toileting|with daily)/,
+    /caregiver helps/, /home health aide/, /activities of daily living/, /\badl\b/,
+    /can(no)?t (bathe|dress|feed|walk|use the bathroom)/
+  ]},
+  {id:"wheelchair", patterns:[
+    /\bwheelchair\b/, /mobility scooter/, /motorized scooter/, /electric scooter/,
+    /uses (a |the )?(walker|cane)/, /\bhoyer lift\b/, /can(no)?t walk/
+  ]},
+
+  // ===== DIABETIC COMPLICATIONS (run before plain diabetes) ========================
+  {id:"diabetes-amputation", patterns:[
+    /amputat/, /amputee/,
+    /lost (a |his |her |my |the )?(toe|foot|leg|finger)/,
+    /lost part of (a |his |her |my |the )?(foot|leg)/,
+    /diabetic foot ulcer/, /foot ulcer/
+  ]},
+  {id:"diabetes-circulation", patterns:[
+    /circulation/, /vascular/, /\bp\.?v\.?d\b/, /\bp\.?a\.?d\b/,
+    /peripheral (artery|arterial|vascular)/, /poor blood flow/, /arterial disease/
+  ]},
+  {id:"diabetes-neuropathy", patterns:[
+    /neuropathy/, /nerve damage/, /nerve pain/,
+    /numb (feet|hands|toes|fingers|extremities)/, /tingling (in |her |his )?(feet|hands)/,
+    /diabetic ulcer/
+  ]},
+  {id:"diabetes-retinopathy", patterns:[
+    /retinopathy/, /diabetic eye/, /diabetic vision/, /vision loss.*diabet/, /diabet.*vision loss/
+  ]},
+  {id:"diabetes-uncontrolled", patterns:[
+    /uncontrolled diabet/, /poorly controlled diabet/, /\bdka\b/, /diabetic ketoacidosis/,
+    /a1c (of |is |at |around |~|=)?\s*(9|1\d)\b/, /a1c (over|above|>) ?9/,
+    /high a1c/, /sugar (is )?(out of control|very high)/, /high blood sugar/
+  ]},
+  {id:"diabetes-insulin", patterns:[
+    /insulin[- ]?(dependent|dep|pump)/, /on insulin/, /takes insulin/, /injects insulin/,
+    /\blantus\b/, /\bhumalog\b/, /\bhumulin\b/, /\bnovolog\b/, /\blevemir\b/, /\btresiba\b/, /\btoujeo\b/
+  ]},
+  {id:"diabetes-t1", patterns:[
+    /type[ -]?1 diabet/, /type[ -]?i diabet/, /\bt1 diabet\b/, /\bt1d\b/, /juvenile diabet/
+  ]},
+  {id:"diabetes-t2", patterns:[
+    /type[ -]?2 diabet/, /type[ -]?ii diabet/, /\bt2 diabet\b/, /\bt2d\b/,
+    /\bdiabet/, /\bdiabetic\b/, /\bsugar (problem|issue)/,
+    // Common T2 diabetes drugs:
+    /\bmetformin\b/, /glucophage/, /\bjardiance\b/, /\bozempic\b/, /\btrulicity\b/,
+    /\bmounjaro\b/, /\bjanuvia\b/, /\bvictoza\b/, /\bglipizide\b/, /\bglyburide\b/,
+    /\bglucotrol\b/, /\bfarxiga\b/, /\binvokana\b/, /\brybelsus\b/
+  ]},
+
+  // ===== HEART / CARDIOVASCULAR ====================================================
+  {id:"chf", patterns:[
+    /\bchf\b/, /congestive heart failure/, /heart failure/,
+    /hypertensive heart/, /diastolic heart failure/, /enlarged heart/, /cardiomegaly/
+  ]},
+  {id:"pacemaker", patterns:[
+    /\bpacemaker\b/, /\bicd\b/, /defibrillator/, /implanted (cardio|device)/,
+    /pacer/, /heart device/
+  ]},
+  {id:"aneurysm", patterns:[
+    /aneurysm/, /\baaa\b(?! meeting)/, /abdominal aortic/, /aortic aneurysm/, /brain aneurysm/
+  ]},
+  {id:"heart-attack", patterns:[
+    /heart attack/, /\bmi\b/, /myocardial infarct/, /cardiac arrest/,
+    /\bstent\b/, /bypass surgery/, /open heart/, /\bcabg\b/, /coronary (artery|bypass|disease)/,
+    /\bcad\b/, /heart surgery/, /heart procedure/, /artery blockage/, /blocked artery/,
+    /cardiomyopathy/, /angina/, /chest pain/, /heart valve/, /valve replacement/, /valve repair/,
+    // Heart meds suggesting CAD/heart disease:
+    /\bnitroglycerin\b/, /\bnitro pills?\b/, /\bplavix\b/, /clopidogrel/,
+    /\bcarvedilol\b/, /\bcoreg\b/, /\bmetoprolol\b/, /\batenolol\b/, /\bdigoxin\b/, /\blanoxin\b/
+  ]},
+  {id:"afib", patterns:[
+    /\bafib\b/, /\ba[- ]?fib\b/, /atrial fib/, /atrial flutter/, /arrhythmi/,
+    /irregular heart/, /irregular (heartbeat|pulse)/, /heart rhythm/,
+    // Anticoagulants commonly used for AFib:
+    /\beliquis\b/, /apixaban/, /\bxarelto\b/, /rivaroxaban/, /\bpradaxa\b/, /dabigatran/,
+    /\bcoumadin\b/, /\bwarfarin\b/, /blood thinner/, /\banticoagulant/
+  ]},
+  {id:"stroke-tia", patterns:[
+    /\bstroke\b/, /\btia\b/, /mini[- ]stroke/, /transient ischemic/, /\bcva\b/, /brain bleed/
+  ]},
+  {id:"hbp", patterns:[
+    /high blood pressure/, /hypertens/, /\bhbp\b/, /bp meds?/, /blood pressure (med|pill)/,
+    /\blisinopril\b/, /\blosartan\b/, /\bamlodipine\b/, /\bnorvasc\b/,
+    /\bhctz\b/, /hydrochlorothiazide/, /\bvalsartan\b/, /\bdiovan\b/,
+    /\bolmesartan\b/, /\bbenazepril\b/, /\bramipril\b/, /\benalapril\b/,
+    /\bhyzaar\b/, /\bcozaar\b/, /\bclonidine\b/
+  ]},
+  {id:"chol", patterns:[
+    /high cholesterol/, /\bcholesterol\b/, /\bhyperlipid/, /statin/,
+    /\blipitor\b/, /atorvastatin/, /\bcrestor\b/, /rosuvastatin/,
+    /\bsimvastatin\b/, /\bzocor\b/, /\bpravastatin\b/, /\bpravachol\b/,
+    /\blovastatin\b/, /\bezetimibe\b/, /\bzetia\b/
+  ]},
+
+  // ===== RESPIRATORY ==============================================================
+  {id:"oxygen", patterns:[
+    /oxygen (use|tank|therapy|dependent|machine|equipment|concentrator)/,
+    /on (supplemental )?oxygen/, /needs oxygen/, /uses (an? )?oxygen/, /home oxygen/,
+    /\bo2\b(?! sat)/, /portable oxygen/
+    // Note: CPAP for sleep apnea is NOT a knockout — handled by sleep-apnea rule
+  ]},
+  {id:"copd", patterns:[
+    /\bcopd\b/, /emphysema/, /chronic bronchitis/, /chronic lung disease/,
+    /\bspiriva\b/, /\bsymbicort\b/, /\badvair\b/, /\bbreo\b/, /\banoro\b/, /\btudorza\b/,
+    /\btrelegy\b/, /\bdaliresp\b/, /chronic steroid.*lung/
+  ]},
+  {id:"asthma", patterns:[
+    /asthma/, /\binhaler\b/, /\balbuterol\b/, /\bproventil\b/, /\bventolin\b/,
+    /\bflovent\b/, /\bqvar\b/, /\bsingulair\b/, /montelukast/
+  ]},
+  {id:"sleep-apnea", patterns:[/sleep apnea/, /\bcpap\b/, /\bbipap\b/, /apnea machine/]},
+  {id:"cystic-fibrosis", patterns:[/cystic fibrosis/, /\bcf\b(?! patient)/]},
+  {id:"pulmonary-fibrosis", patterns:[/pulmonary fibrosis/, /\bipf\b/, /lung fibrosis/]},
+
+  // ===== CANCER ===================================================================
+  {id:"brain-tumor", patterns:[/brain tumor/, /glioma/, /meningioma/, /glioblastoma/]},
+  {id:"cancer-recent", patterns:[
+    /active cancer/, /currently has cancer/, /current.*cancer/,
+    /\bchemo\b/, /chemotherapy/, /radiation (treatment|therapy)/,
+    /just diagnosed.*cancer/, /recently diagnosed.*cancer/,
+    /cancer (diagnos|treatment).*(202[3-6]|this year|last year|recently|months ago)/,
+    /metastat/, /stage (iii|iv|3|4|four|three) cancer/
+  ]},
+  {id:"cancer-remission", patterns:[
+    /cancer (remission|survivor|free|cured|history)/, /had cancer/, /past cancer/,
+    /\b(in )?remission\b/, /cancer.*\d+ (years|yrs) ago/,
+    /(breast|prostate|lung|colon|ovarian|pancreatic|thyroid|kidney|bladder|cervical|uterine|skin) cancer.*(\d+ (years|yrs)|ago|history|past)/,
+    /\blymphoma\b/, /\bleukemia\b/, /\bmelanoma\b/, /multiple myeloma/, /hodgkin/,
+    // Common post-cancer Rx:
+    /tamoxifen/, /\barimidex\b/, /anastrozole/, /\bfemara\b/, /letrozole/, /\bcasodex\b/,
+    /\beligard\b/, /\bzoladex\b/
+  ]},
+
+  // ===== MENTAL HEALTH ============================================================
+  {id:"bipolar", patterns:[
+    /bipolar/, /schizophren/, /schizoaffective/, /manic[- ]depress/, /psychotic/,
+    /\blithium\b/, /\bdepakote\b/, /\blamictal\b/, /\babilify\b/, /\bzyprexa\b/,
+    /\bseroquel\b/, /\brisperdal\b/, /risperidone/, /\blatuda\b/, /\bgeodon\b/,
+    /\bclozapine\b/, /\bhaldol\b/, /haloperidol/, /\binvega\b/, /\bsaphris\b/
+  ]},
+  {id:"depression", patterns:[
+    /depress/, /\banxiety\b/, /\bptsd\b/, /panic (attack|disorder)/,
+    /\blexapro\b/, /escitalopram/, /\bzoloft\b/, /sertraline/, /\bssri\b/,
+    /\bprozac\b/, /fluoxetine/, /\bcymbalta\b/, /duloxetine/, /\bwellbutrin\b/, /bupropion/,
+    /\bpaxil\b/, /paroxetine/, /\bcitalopram\b/, /\bcelexa\b/, /\beffexor\b/, /venlafaxine/,
+    /\bamitriptyline\b/, /\bnortriptyline\b/, /trazodone/,
+    /\bxanax\b/, /alprazolam/, /\bativan\b/, /lorazepam/, /\bklonopin\b/, /clonazepam/
+  ]},
+  {id:"mental-incapacity", patterns:[/mental incapacity/, /developmentally (disabled|delayed)/, /down syndrome/]},
+
+  // ===== SUBSTANCE / LEGAL ========================================================
+  {id:"alcohol-rehab", patterns:[
+    /alcohol (rehab|abuse|treatment|problem)/, /\baa meeting/, /alcoholics anonymous/,
+    /\bsober\b/, /\brehab\b/, /detox/, /alcoholic\b/, /heavy drinker/, /drinks heavily/,
+    /\bantabuse\b/, /\bcampral\b/, /\bnaltrexone\b/, /\bvivitrol\b/
+  ]},
+  {id:"rx-opioid", patterns:[
+    /\bopioid/, /\boxycodone\b/, /\boxycontin\b/, /\bhydrocodone\b/, /\bfentanyl\b/,
+    /\bmorphine\b/, /\bpercocet\b/, /\bvicodin\b/, /\bsuboxone\b/, /\bmethadone\b/,
+    /\btramadol\b/, /\bultram\b/, /\bcodeine\b/, /\bdilaudid\b/, /hydromorphone/,
+    /\bnorco\b/, /\blortab\b/, /pain management/, /pain clinic/, /chronic pain (med|pill)/
+  ]},
+  {id:"mj-med", patterns:[/medical (marijuana|cannabis)/, /marijuana card/, /\bmmj card\b/, /\bdispensary\b/]},
+  {id:"mj-rec", patterns:[
+    /\bmarijuana\b/, /\bcannabis\b/, /\bweed\b/, /\bthc\b/, /smokes pot/, /\bedibles\b/,
+    /\bgummies\b.*\b(thc|weed)/, /\bvape.*thc/
+  ]},
+  {id:"dui", patterns:[
+    /\bdui\b/, /\bdwi\b/, /driving under (the )?influence/, /drunk driving/, /\bowi\b/
+  ]},
+  {id:"felony", patterns:[/felony/, /\bprobation\b/, /\bparole\b/, /\bconvicted\b/, /incarcerated/]},
+
+  // ===== OTHER CHRONIC ============================================================
+  {id:"kidney", patterns:[
+    /kidney (disease|failure|problems?)/, /\bdialysis\b/, /\bckd\b/, /\besrd\b/,
+    /end[- ]stage renal/, /renal (failure|insufficiency|disease)/, /chronic kidney/
+  ]},
+  {id:"liver", patterns:[
+    /hepatit/, /liver (disease|failure|problems?)/, /cirrhosis/, /fatty liver/, /nash\b/,
+    /\bbaraclude\b/, /\bharvoni\b/
+  ]},
+  {id:"hiv", patterns:[
+    /\bhiv\b/, /\baids\b/, /\barc\b(?! group)/, /immunodeficiency virus/,
+    /\babacavir\b/, /\batripla\b/, /\btruvada\b/, /\bbiktarvy\b/, /\bisentress\b/, /antiretroviral/
+  ]},
+  {id:"crohn", patterns:[/crohn/, /ulcerative colitis/, /\bibd\b/]},
+  {id:"lupus", patterns:[/\blupus\b/, /systemic lupus/, /\bsle\b(?! exam)/, /\bplaquenil\b/, /hydroxychloroquine/]},
+  {id:"sickle-cell", patterns:[/sickle cell/, /sickle[- ]?cell anemia/]},
+  {id:"als", patterns:[/\bals\b(?! disease test)/, /amyotrophic lateral/, /lou gehrig/]},
+  {id:"alzheimers", patterns:[
+    /alzheimer/, /\bdementia\b/, /cognitive (impair|decline)/, /memory loss/, /confused.*memory/,
+    /\baricept\b/, /donepezil/, /\bnamenda\b/, /memantine/, /\bexelon\b/, /rivastigmine/
+  ]},
+  {id:"paralysis", patterns:[/paralys/, /paraplegi/, /quadriplegi/, /spinal cord injury/]},
+  {id:"transplant", patterns:[
+    /(organ|kidney|heart|liver|lung|pancreas|bone marrow|stem cell) transplant/,
+    /transplant (recipient|patient|surgery)/, /awaiting transplant/
+  ]},
+  {id:"ms", patterns:[
+    /multiple sclerosis/, /\bms\b(?! diagnos| office| word)/, /\bparkinson/, /huntington/,
+    // MS/Parkinson disease drugs:
+    /\bcopaxone\b/, /\bavonex\b/, /\bbetaseron\b/, /\btysabri\b/, /\brebif\b/,
+    /\bgilenya\b/, /\btecfidera\b/, /\bocrevus\b/,
+    /\bsinemet\b/, /\blevodopa\b/, /carbidopa/, /\brequip\b/, /\bmirapex\b/, /\bazilect\b/
+  ]},
+  {id:"epilepsy", patterns:[
+    /epilepsy/, /seizure/, /convuls/, /\bkeppra\b/, /levetiracetam/, /\bdilantin\b/, /\bphenytoin\b/,
+    /\btegretol\b/, /carbamazepine/, /\blamictal\b(?=.*seizure)/
+  ]},
+  {id:"healthy", patterns:[
+    /^(healthy|no (health )?(issues|conditions|problems))$/i,
+    /clean bill of health/, /no medications/, /no rx\b/, /not on any meds/, /perfectly healthy/
+  ]}
+];
+
+// Common medical typos — normalize before pattern matching so we tolerate
+// agents typing quickly. Keys are typos, values are correct spellings.
+const TYPO_FIX = {
+  // neuro / cardio
+  "stoke": "stroke",
+  "stokes": "strokes",
+  "alzeimers": "alzheimers",
+  "alzhiemers": "alzheimers",
+  "altzheimers": "alzheimers",
+  "alzheimer's": "alzheimers",
+  "arythmia": "arrhythmia",
+  "arhythmia": "arrhythmia",
+  "arrythmia": "arrhythmia",
+  "afib'd": "afib",
+  "pacmaker": "pacemaker",
+  "pacmkr": "pacemaker",
+  "defibrilator": "defibrillator",
+  "annurism": "aneurysm",
+  "anuerysm": "aneurysm",
+  "anyerism": "aneurysm",
+  // endo / kidney
+  "diabetis": "diabetes",
+  "diabeties": "diabetes",
+  "diabetus": "diabetes",
+  "diabeetus": "diabetes",
+  "diabetics": "diabetic",
+  "neuropothy": "neuropathy",
+  "retinopothy": "retinopathy",
+  "dyalisis": "dialysis",
+  "dialisis": "dialysis",
+  // lung
+  "emphasema": "emphysema",
+  "emphasyma": "emphysema",
+  "emphsema": "emphysema",
+  "copd's": "copd",
+  // mental
+  "bi-polar": "bipolar",
+  "bipoler": "bipolar",
+  "schitzophrenia": "schizophrenia",
+  "schizofrenia": "schizophrenia",
+  "depresion": "depression",
+  // cancer
+  "lymphona": "lymphoma",
+  "leukimia": "leukemia",
+  "metestatic": "metastatic",
+  "chemmo": "chemo",
+  // misc
+  "hospics": "hospice",
+  "amputaton": "amputation",
+  "ampuated": "amputated",
+  "cirrosis": "cirrhosis",
+  "hepititis": "hepatitis",
+  "hepatits": "hepatitis",
+  "transplate": "transplant",
+  "transplnat": "transplant",
+  "parkensons": "parkinsons",
+  "parkensens": "parkinsons",
+  "parkinson's": "parkinsons",
+  "huntingtons": "huntington",
+  // BP/lipid
+  "pressure": "pressure",
+  "presure": "pressure",
+  "choloresterol": "cholesterol",
+  "cholestrol": "cholesterol"
+};
+
+function normalizeTypos(text){
+  // Word-boundary substitution to avoid replacing inside other words
+  let out = text;
+  for (const [bad, good] of Object.entries(TYPO_FIX)){
+    // Escape regex special chars in the key
+    const esc = bad.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out = out.replace(new RegExp("\\b" + esc + "\\b", "g"), good);
+  }
+  return out;
+}
+
+// ----------------------------- Time / recency parser --------------------------
+// Looks for "X years ago", "X months ago", "in YYYY", "last year", "recently",
+// "currently" — buckets the timing as recent (<1 yr), mid (1-2 yrs), or old (>2 yrs).
+function detectRecency(text, conditionKeyword){
+  // Find condition keyword position; look in 80 chars around it for time phrases
+  const idx = text.indexOf(conditionKeyword);
+  if (idx < 0) return null;
+  const window = text.slice(Math.max(0,idx-40), idx + conditionKeyword.length + 80);
+
+  // "X years ago" / "X yrs ago"
+  let m = window.match(/(\d+)\s*(years?|yrs?)\s*ago/);
+  if (m){
+    const n = parseInt(m[1],10);
+    if (n < 1) return "recent";
+    if (n <= 2) return "mid";
+    return "old";
+  }
+  // "X months ago"
+  m = window.match(/(\d+)\s*months?\s*ago/);
+  if (m){
+    const n = parseInt(m[1],10);
+    if (n < 12) return "recent";
+    if (n <= 24) return "mid";
+    return "old";
+  }
+  // "in YYYY"
+  m = window.match(/in\s*(20\d\d)\b/);
+  if (m){
+    const year = parseInt(m[1],10);
+    const now = new Date().getFullYear();
+    const diff = now - year;
+    if (diff < 1) return "recent";
+    if (diff <= 2) return "mid";
+    return "old";
+  }
+  // Plain English markers
+  if (/(currently|right now|active|ongoing|present|recently|this year|few months|just diagnosed|just had)/.test(window)) return "recent";
+  if (/(last year|a year ago|past year|about a year)/.test(window)) return "recent";
+  if (/(two years ago|2 years ago|couple years ago)/.test(window)) return "mid";
+  if (/(years? back|long time ago|when (he|she|i) was younger|in (his|her|my) 40s|in (his|her|my) 50s|decade ago|many years ago)/.test(window)) return "old";
+  return null; // unknown
+}
+
+// Returns {ids: Set, tobacco: string|null, recency: {conditionId: "recent"|"mid"|"old"}}
+function parseHealthText(raw){
+  const text = normalizeTypos((raw||"").toLowerCase());
+  const ids = new Set();
+  const recency = {};
+  if (!text.trim()) return {ids, tobacco:null, recency};
+
+  // Conditions
+  PARSE_RULES.forEach(rule => {
+    if (rule.patterns.some(re => re.test(text))) ids.add(rule.id);
+  });
+
+  // === Recency detection for time-sensitive conditions ===
+  // For each detected condition that has time-sensitive UW (stroke, heart, cancer),
+  // try to extract when it happened from the surrounding text.
+  const recencyKeywords = {
+    "stroke-tia": ["stroke", "tia"],
+    "heart-attack": ["heart attack", "bypass", "stent", "cabg", "open heart"],
+    "afib": ["afib", "a-fib", "atrial fib"],
+    "aneurysm": ["aneurysm", "aaa"],
+    "pacemaker": ["pacemaker", "defibrillator"],
+    "cancer-remission": ["cancer", "tumor", "remission"],
+    "cancer-recent": ["chemo", "radiation", "cancer"]
+  };
+  Object.entries(recencyKeywords).forEach(([id, keywords]) => {
+    if (!ids.has(id)) return;
+    for (const kw of keywords){
+      const r = detectRecency(text, kw);
+      if (r){ recency[id] = r; break; }
+    }
+  });
+
+  // === Post-processing cleanup ===
+
+  // If T1 diabetes detected, remove T2 (T2 patterns also match "diabetic" generally)
+  if (ids.has("diabetes-t1")) ids.delete("diabetes-t2");
+
+  // If text indicates cancer is OLD (X years ago, remission, survivor), suppress cancer-recent
+  // unless there's also an "active" / "currently" / "stage IV" / "metastatic" signal
+  if (ids.has("cancer-recent") && ids.has("cancer-remission")){
+    const stillActive = /active cancer|currently has cancer|metastat|stage (iii|iv|3|4)/.test(text);
+    const clearlyOld = /\d+ (years|yrs) ago|in remission|cancer (free|survivor|cured)|finished (chemo|treatment|radiation)/.test(text);
+    if (clearlyOld && !stillActive) ids.delete("cancer-recent");
+  }
+
+  // Symbicort/Advair are dual-use (COPD or asthma) — if asthma explicitly stated and no
+  // COPD/emphysema/chronic bronchitis keyword, prefer asthma only
+  if (ids.has("copd") && ids.has("asthma")){
+    const explicitCopd = /\bcopd\b|emphysema|chronic bronchitis|chronic lung/.test(text);
+    if (!explicitCopd) ids.delete("copd");
+  }
+
+  // Diabetic complication implies diabetes-t2 (unless t1 stated)
+  if ((ids.has("diabetes-amputation")||ids.has("diabetes-neuropathy")||ids.has("diabetes-retinopathy")||ids.has("diabetes-circulation")||ids.has("diabetes-uncontrolled")||ids.has("diabetes-insulin"))
+      && !ids.has("diabetes-t1") && !ids.has("diabetes-t2")) {
+    ids.add("diabetes-t2");
+  }
+
+  // Tobacco detection
+  let tobacco = null;
+  if (/\b(non[- ]?smoker|never smoked|doesn't smoke|no tobacco|no nicotine)\b/.test(text)) tobacco = "none";
+  else if (/\b(quit smoking|former smoker|ex[- ]smoker|stopped smoking|gave up smoking)\b/.test(text)) tobacco = "quit-recent";
+  else if (/cigarette|smokes\b|pack a day|pack[- ]?a[- ]?day|\bsmoker\b|smoking habit/.test(text)) tobacco = "smoker";
+  else if (/\bvape|\bvaping|e[- ]?cig/.test(text)) tobacco = "vape";
+  else if (/\bchew\b|smokeless|\bdip\b|snuff/.test(text)) tobacco = "chew";
+  else if (/\bcigar\b/.test(text)) tobacco = "cigar";
+  else if (ids.has("mj-rec") || ids.has("mj-med")) tobacco = "marijuana";
+
+  return {ids, tobacco, recency};
+}
+
+// ----------------------------- UI wiring --------------------------------------
+const chipsEl = document.getElementById("chips");
+const selected = new Set();
+const chipNodes = {};
+CONDITIONS.forEach(c => {
+  const el = document.createElement("span");
+  el.className = "chip";
+  el.textContent = c.label;
+  el.dataset.id = c.id;
+  el.addEventListener("click", () => {
+    if (selected.has(c.id)) { selected.delete(c.id); el.classList.remove("on"); }
+    else { selected.add(c.id); el.classList.add("on"); }
+    if (typeof renderClarifications === "function") renderClarifications();
+  });
+  chipsEl.appendChild(el);
+  chipNodes[c.id] = el;
+});
+
+// ----------------------------- Client details / clarifications ---------------
+// Stores follow-up answers (recency, type, complications) per condition.
+const clientDetails = {};
+
+// Clarification question definitions. For each condition ID, what should we ask
+// if we don't already know? Answers map to clientDetails keys.
+const CLARIFICATIONS = [
+  { id:"stroke-tia", key:"strokeRecency",
+    question:"How long ago was the stroke / TIA?",
+    opts:[
+      {val:"recent", label:"Within 1 year"},
+      {val:"mid",    label:"1–2 years ago"},
+      {val:"old",    label:"2+ years ago"},
+      {val:"unknown",label:"Don't know"}
+    ]},
+  { id:"heart-attack", key:"heartRecency",
+    question:"How long ago was the heart event (attack / stent / bypass)?",
+    opts:[
+      {val:"recent", label:"Within 1 year"},
+      {val:"mid",    label:"1–2 years ago"},
+      {val:"old",    label:"2+ years ago"},
+      {val:"unknown",label:"Don't know"}
+    ]},
+  { id:"afib", key:"afibRecency",
+    question:"How long since the AFib / arrhythmia was diagnosed or last treated?",
+    opts:[
+      {val:"recent", label:"Within 1 year"},
+      {val:"mid",    label:"1–2 years ago"},
+      {val:"old",    label:"2+ years ago"},
+      {val:"unknown",label:"Don't know"}
+    ]},
+  { id:"aneurysm", key:"aneurysmRecency",
+    question:"How long ago was the aneurysm treated?",
+    opts:[
+      {val:"recent", label:"Within 1 year"},
+      {val:"mid",    label:"1–2 years ago"},
+      {val:"old",    label:"2+ years ago"},
+      {val:"unknown",label:"Don't know"}
+    ]},
+  { id:"pacemaker", key:"pacemakerRecency",
+    question:"When was the pacemaker / defibrillator placed?",
+    opts:[
+      {val:"recent", label:"Within 1 year"},
+      {val:"mid",    label:"1–2 years ago"},
+      {val:"old",    label:"2+ years ago"},
+      {val:"unknown",label:"Don't know"}
+    ]},
+  { id:"cancer-remission", key:"cancerRecency",
+    question:"How long has the cancer been in remission?",
+    opts:[
+      {val:"mid",    label:"2–4 years"},
+      {val:"old",    label:"4+ years"},
+      {val:"unknown",label:"Don't know"}
+    ]},
+  // Diabetes follow-ups
+  { id:"diabetes-t2", key:"diabetesA1C",
+    question:"What's the client's A1C level?",
+    opts:[
+      {val:"controlled",  label:"Under 7 (well controlled)"},
+      {val:"midcontrol",  label:"7–9 (moderate)"},
+      {val:"uncontrolled",label:"Over 9 (uncontrolled)"},
+      {val:"unknown",     label:"Don't know"}
+    ],
+    onAnswer:(val) => {
+      if (val==="uncontrolled") { selected.add("diabetes-uncontrolled"); chipNodes["diabetes-uncontrolled"]?.classList.add("on"); }
+    }},
+  { id:"diabetes-t2", key:"diabetesComplications",
+    question:"Any diabetic complications? (Tap all that apply or 'none')",
+    opts:[
+      {val:"none",        label:"None — clean"},
+      {val:"neuropathy",  label:"Neuropathy"},
+      {val:"retinopathy", label:"Retinopathy"},
+      {val:"amputation",  label:"Amputation"},
+      {val:"circulation", label:"PVD / circulation"}
+    ],
+    multi:true,
+    onAnswer:(val) => {
+      if (val==="neuropathy") { selected.add("diabetes-neuropathy"); chipNodes["diabetes-neuropathy"]?.classList.add("on"); }
+      if (val==="retinopathy") { selected.add("diabetes-retinopathy"); chipNodes["diabetes-retinopathy"]?.classList.add("on"); }
+      if (val==="amputation") { selected.add("diabetes-amputation"); chipNodes["diabetes-amputation"]?.classList.add("on"); }
+      if (val==="circulation") { selected.add("diabetes-circulation"); chipNodes["diabetes-circulation"]?.classList.add("on"); }
+    }},
+  { id:"diabetes-t2", key:"diabetesInsulin",
+    question:"Insulin-dependent?",
+    opts:[
+      {val:"no",   label:"No — diet/pills only"},
+      {val:"yes",  label:"Yes — on insulin"},
+      {val:"unknown", label:"Don't know"}
+    ],
+    onAnswer:(val) => {
+      if (val==="yes") { selected.add("diabetes-insulin"); chipNodes["diabetes-insulin"]?.classList.add("on"); }
+    }},
+  { id:"copd", key:"copdSeverity",
+    question:"COPD severity — does the client use oxygen?",
+    opts:[
+      {val:"no",   label:"No oxygen"},
+      {val:"yes",  label:"Yes, on oxygen"},
+      {val:"unknown", label:"Don't know"}
+    ],
+    onAnswer:(val) => {
+      if (val==="yes") { selected.add("oxygen"); chipNodes["oxygen"]?.classList.add("on"); }
+    }}
+];
+
+function renderClarifications(){
+  const wrap = document.getElementById("clarifications");
+  // Build a list of pending clarification cards based on selected chips
+  const pending = CLARIFICATIONS.filter(c =>
+    selected.has(c.id) && clientDetails[c.key] === undefined
+  );
+  // Also show ones we have answers for, marked answered
+  const answered = CLARIFICATIONS.filter(c =>
+    selected.has(c.id) && clientDetails[c.key] !== undefined
+  );
+
+  if (pending.length === 0 && answered.length === 0) {
+    wrap.innerHTML = "";
+    return;
+  }
+
+  const cardHtml = (c, isAnswered) => {
+    const current = clientDetails[c.key];
+    return `
+      <div class="clarify-card ${isAnswered ? 'answered' : ''}">
+        <div class="q">${c.question}${isAnswered ? `<span class="answer">— ${Array.isArray(current)?current.join(", "):current}</span>` : ""}</div>
+        <div class="opts">
+          ${c.opts.map(o => {
+            const isOn = c.multi
+              ? (Array.isArray(current) && current.includes(o.val))
+              : (current === o.val);
+            return `<button class="clarify-opt ${isOn ? 'on' : ''}" data-key="${c.key}" data-val="${o.val}" data-multi="${c.multi?1:0}" data-cid="${c.id}">${o.label}</button>`;
+          }).join("")}
+        </div>
+      </div>`;
+  };
+
+  wrap.innerHTML = `
+    <div class="clarify-wrap">
+      <h3>${pending.length ? "Tell me a bit more →" : "Confirmed details"}</h3>
+      ${pending.map(c => cardHtml(c, false)).join("")}
+      ${answered.map(c => cardHtml(c, true)).join("")}
+    </div>
+  `;
+
+  // Wire option buttons
+  wrap.querySelectorAll(".clarify-opt").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.key;
+      const val = btn.dataset.val;
+      const multi = btn.dataset.multi === "1";
+      const cid = btn.dataset.cid;
+      const def = CLARIFICATIONS.find(c => c.key === key);
+
+      if (multi){
+        if (!Array.isArray(clientDetails[key])) clientDetails[key] = [];
+        const arr = clientDetails[key];
+        if (val === "none"){
+          clientDetails[key] = ["none"];
+        } else {
+          // remove "none" if present
+          const i = arr.indexOf("none"); if (i>=0) arr.splice(i,1);
+          // toggle
+          const j = arr.indexOf(val);
+          if (j>=0) arr.splice(j,1); else arr.push(val);
+        }
+      } else {
+        clientDetails[key] = val;
+      }
+      if (def && def.onAnswer) def.onAnswer(val);
+      renderClarifications();
+    });
+  });
+}
+
+// Parse button wiring
+document.getElementById("parseBtn").addEventListener("click", () => {
+  const raw = document.getElementById("healthText").value;
+  const {ids, tobacco, recency} = parseHealthText(raw);
+  // Sync chips to detected ids (additive — don't unselect manual picks)
+  ids.forEach(id => {
+    if (chipNodes[id]) { selected.add(id); chipNodes[id].classList.add("on"); }
+  });
+  // Apply tobacco
+  if (tobacco) document.getElementById("tobacco").value = tobacco;
+  // Apply recency to clientDetails (auto-answers clarifications)
+  if (recency["stroke-tia"]) clientDetails.strokeRecency = recency["stroke-tia"];
+  if (recency["heart-attack"]) clientDetails.heartRecency = recency["heart-attack"];
+  if (recency["afib"]) clientDetails.afibRecency = recency["afib"];
+  if (recency["aneurysm"]) clientDetails.aneurysmRecency = recency["aneurysm"];
+  if (recency["pacemaker"]) clientDetails.pacemakerRecency = recency["pacemaker"];
+  if (recency["cancer-remission"]) clientDetails.cancerRecency = recency["cancer-remission"];
+
+  // Status feedback
+  const labels = [...ids].map(id => (CONDITIONS.find(c=>c.id===id)||{}).label).filter(Boolean);
+  const parts = [];
+  if (labels.length) parts.push(`Detected: ${labels.join(", ")}`);
+  if (tobacco) parts.push(`Tobacco: ${tobacco}`);
+  const autoAnsweredCount = Object.keys(recency).length;
+  if (autoAnsweredCount) parts.push(`Time context auto-detected for ${autoAnsweredCount} condition${autoAnsweredCount>1?"s":""}`);
+  document.getElementById("parseStatus").textContent =
+    parts.length ? parts.join(" • ") : "No conditions detected — tap chips manually or rephrase.";
+
+  renderClarifications();
+});
+
+function calcBMI(){
+  const ft = parseFloat(document.getElementById("ft").value)||0;
+  const inch = parseFloat(document.getElementById("in").value)||0;
+  const wt = parseFloat(document.getElementById("wt").value)||0;
+  const totalIn = ft*12 + inch;
+  if(!totalIn || !wt) return null;
+  return (wt / (totalIn*totalIn)) * 703;
+}
+function refreshBMI(){
+  const b = calcBMI();
+  document.getElementById("bmiOut").textContent = b ? `BMI: ${b.toFixed(1)}` : "BMI: —";
+}
+["ft","in","wt"].forEach(id => document.getElementById(id).addEventListener("input", refreshBMI));
+
+// ----------------------------- Age from DOB -----------------------------------
+// FE carriers use "Age Last Birthday" (ALB) — actual age as of application date.
+// Confirmed for Transamerica FE Express, Mutual of Omaha Living Promise,
+// American Amicable Senior Choice, ANICO Legacy. Fully-UW term (ANICO Signature)
+// uses Age Nearest Birthday but FE is the main book here.
+function calcAge(){
+  const v = document.getElementById("dob").value;
+  if(!v) return null;
+  const dob = new Date(v);
+  if(isNaN(dob)) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if(m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
+}
+function refreshAge(){
+  const a = calcAge();
+  const el = document.getElementById("ageOut");
+  if(a===null){ el.textContent = "Age: —"; return; }
+  el.textContent = `Age: ${a} (age last birthday — FE standard)`;
+}
+document.getElementById("dob").addEventListener("input", refreshAge);
+
+// ----------------------------- Match engine -----------------------------------
+function buildProfile(){
+  const age = calcAge() || 0;
+  const gender = document.getElementById("gender").value;
+  const tobacco = document.getElementById("tobacco").value;
+  const product = document.getElementById("product").value;
+  const face = parseInt(document.getElementById("face").value,10) || 0;
+  const term = parseInt(document.getElementById("term").value,10) || 0;
+  const exam = document.getElementById("exam").value;
+  const budget = document.getElementById("budget").value;
+  const notes = document.getElementById("notes").value.toLowerCase();
+  const bmi = calcBMI();
+  const conds = new Set(selected);
+  if (bmi && bmi >= 32) conds.add("obesity");
+  if (conds.size === 0) conds.add("healthy");
+  const healthy = conds.has("healthy") && conds.size === 1 && tobacco === "none";
+
+  return {
+    age, gender, tobacco, product, face, term, exam, budget, notes, bmi,
+    healthy,
+    has: (id) => conds.has(id),
+    // Time-context details from clarifications
+    details: clientDetails,
+    recency: (cid) => clientDetails[
+      cid==="stroke-tia" ? "strokeRecency" :
+      cid==="heart-attack" ? "heartRecency" :
+      cid==="afib" ? "afibRecency" :
+      cid==="aneurysm" ? "aneurysmRecency" :
+      cid==="pacemaker" ? "pacemakerRecency" :
+      cid==="cancer-remission" ? "cancerRecency" : ""
+    ]
+  };
+}
+
+function score(profile){
+  const out = [];
+  const excluded = [];
+  CARRIERS.forEach(c => {
+    if (!c.products.includes(profile.product)){
+      excluded.push({name:c.name, reason:"Doesn't offer this product type"});
+      return;
+    }
+    // Hard knockout — carrier would decline this case.
+    if (typeof c.knockouts === "function"){
+      const ko = c.knockouts(profile);
+      if (ko){ excluded.push({name:c.name, reason:ko}); return; }
+    }
+    const r = c.score(profile);
+    if (!r || r.score <= 0){ excluded.push({name:c.name, reason:"Below minimum fit threshold"}); return; }
+    out.push({name:c.name, score:r.score, why:r.why||[], flags:r.flags||[]});
+  });
+  out.sort((a,b)=>b.score-a.score);
+  return {matches: out, excluded};
+}
+
+function badge(idx, n){
+  if (idx===0) return {cls:"best", text:"#1 BEST FIT"};
+  if (idx===1) return {cls:"good", text:"2nd best"};
+  if (idx===2) return {cls:"good", text:"3rd best"};
+  if (idx < Math.ceil(n*0.6)) return {cls:"maybe", text:"Solid backup"};
+  return {cls:"maybe", text:"Last resort"};
+}
+function rankClass(i){ if(i===0) return "r1"; if(i===1) return "r2"; if(i===2) return "r3"; return ""; }
+
+function render(profile){
+  const {matches:list, excluded} = score(profile);
+  const r = document.getElementById("result");
+  if(!profile.age || !profile.gender){
+    r.innerHTML = `<div class="empty">Enter at least date of birth and gender to see recommendations.</div>`;
+    return;
+  }
+  const summaryFlags = [];
+  if(profile.bmi){
+    if(profile.bmi>=35) summaryFlags.push(`<span class="flag bad">BMI ${profile.bmi.toFixed(1)} — table rating likely</span>`);
+    else if(profile.bmi>=32) summaryFlags.push(`<span class="flag warn">BMI ${profile.bmi.toFixed(1)} — borderline</span>`);
+    else summaryFlags.push(`<span class="flag">BMI ${profile.bmi.toFixed(1)}</span>`);
+  }
+  if(profile.tobacco!=="none") summaryFlags.push(`<span class="flag warn">Tobacco: ${profile.tobacco}</span>`);
+  if(profile.has("cancer-recent")) summaryFlags.push(`<span class="flag bad">Recent cancer — refer to GI carrier</span>`);
+
+  // Auto-expand excluded section when there are zero matches so the agent
+  // can immediately see WHY each carrier declined.
+  const excludedHtml = excluded.length ? `
+    <details ${list.length===0?"open":""} style="margin-top:14px">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px">
+        ${excluded.length} carrier${excluded.length>1?"s":""} excluded (declines/age-out) — click to view
+      </summary>
+      <div style="margin-top:8px">
+        ${excluded.map(e=>`<div class="flag bad" style="display:block;margin:4px 0">${e.name}: ${e.reason}</div>`).join("")}
+      </div>
+    </details>` : "";
+
+  if(list.length === 0){
+    r.innerHTML = `
+      <div class="flags" style="margin-bottom:10px">${summaryFlags.join("")}</div>
+      <div class="pick" style="border-color:#5a4720;background:#2a2412">
+        <div class="name" style="color:#ffd166">No eligible carriers — case is uninsurable through your book</div>
+        <div class="why" style="color:#cfd6e2;margin-top:10px">
+          This client's profile triggers an underwriting knockout at every carrier you're appointed with.
+          See the breakdown below for the specific decline reason at each one.
+          <br><br>
+          <strong style="color:#ffd166">Refer-out options:</strong>
+          <br>• <strong>Gerber Life Guaranteed Issue</strong> — no health questions, ages 50–80, $5k–$25k face
+          <br>• <strong>AIG Guaranteed Issue Whole Life</strong> — no health questions, ages 50–80, $5k–$25k face
+          <br>• <strong>Colonial Penn Guaranteed Acceptance</strong> — ages 50–85, up to $50k
+          <br><br>
+          All three have a 2-year graded benefit (return of premium + interest in years 1–2, full benefit yr 3+).
+        </div>
+      </div>
+      ${excludedHtml}`;
+    return;
+  }
+
+  r.innerHTML = `
+    <div class="flags" style="margin-bottom:10px">${summaryFlags.join("")}</div>
+    <div class="empty" style="text-align:left;padding:0 0 10px;color:var(--muted);font-size:13px">
+      ${list.length} eligible carrier${list.length>1?"s":""} ranked from best fit to last resort. Carriers that would decline are not shown.
+    </div>
+    ${list.map((c,i)=>{
+      const b = badge(i,list.length);
+      return `
+        <div class="pick">
+          <div class="top">
+            <div class="name"><span class="rank ${rankClass(i)}">#${i+1}</span>${c.name}</div>
+            <div><span class="badge ${b.cls}">${b.text}</span></div>
+          </div>
+          ${c.why.length ? `<div class="why">• ${c.why.join("<br>• ")}</div>` : ""}
+          ${c.flags.length ? `<div class="flags">${c.flags.map(f=>`<span class="flag ${f.c||""}">${f.t}</span>`).join("")}</div>` : ""}
+        </div>`;
+    }).join("")}
+    ${excludedHtml}
+  `;
+}
+
+document.getElementById("go").addEventListener("click", () => {
+  // Auto-parse health text if anything is typed and the user hasn't clicked
+  // Detect yet (i.e. no chips are selected from parsing).
+  const text = document.getElementById("healthText").value.trim();
+  if (text) document.getElementById("parseBtn").click();
+  render(buildProfile());
+});
+document.getElementById("reset").addEventListener("click", () => {
+  document.querySelectorAll("input,select,textarea").forEach(el => {
+    if(el.tagName==="TEXTAREA") el.value="";
+    else if(el.type==="number"||el.type==="text"||el.type==="date") el.value="";
+    else el.selectedIndex=0;
+  });
+  selected.clear();
+  document.querySelectorAll(".chip.on").forEach(c => c.classList.remove("on"));
+  // Clear clarification answers + the rendered cards
+  Object.keys(clientDetails).forEach(k => delete clientDetails[k]);
+  document.getElementById("clarifications").innerHTML = "";
+  refreshBMI();
+  refreshAge();
+  document.getElementById("parseStatus").textContent = "";
+  document.getElementById("result").innerHTML = "";
+});
+</script>
+</body>
+</html>
